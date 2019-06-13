@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Wild App</title>
+        <meta name="description" content="My first PWA"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="manifest" href="/manifest.json">
+        <meta name="theme-color" content="#00897B"/>
+        <link rel="stylesheet" href="/assets/css/materialize.min.css">
+        <link rel="favicon" href="/assets/image/icon.png">
+    </head>
+    <body>
+
+        <!-- COMPONENT SECTION -->
+        <div id="nav"></div>
+
+        <!-- BODY SECTION -->
+        <div id="content"></div>
+
+        <!-- BUTTON INSTALL APP -->
+        <div id="install-button" style="position:fixed; bottom:0px; left: 0px; right: 0px; background-color: white; padding: 8px; text-align: center; cursor: pointer;">
+            Install Apps?
+        </div>
+
+        <script src="/assets/js/materialize.min.js"></script>
+        <script src="/assets/js/component.js"></script>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                
+                // Call Sidebar Component
+                let nav = document.querySelector("#nav"),
+                    body = document.querySelector("#content")
+
+                ajax.get("/component/navigation.html", function(res) {
+                    nav.innerHTML = res
+                    // Set Item Menu
+                    document.querySelectorAll(".topnav, .sidenav").forEach(function(elm, key) {
+                        db.nav.data.forEach(function(item) {
+                            elm.appendChild(db.nav.template(item))
+                        })
+
+                        // Set Mobile Navbar Effect
+                        if(key == 1) {
+                            M.Sidenav.init(elm);
+                        }
+                    });
+
+                    ajax.get("/pages/vertebrata.html", function(resPage) {
+                        body.innerHTML = resPage
+                    })
+
+                    // Set Action For Item Menu
+                    document.querySelectorAll(".sidenav a, .topnav a").forEach(function(elm) {
+                        elm.addEventListener("click", function(event) {
+                            // Close Navbar
+                            var sidenav = document.querySelector(".sidenav");
+                            M.Sidenav.getInstance(sidenav).close();
+                    
+                            // Call Page
+                            page = event.target.getAttribute("href").substr(1);
+                            ajax.get("/pages/" + page + ".html", function(resPage) {
+                                body.innerHTML = resPage
+                            })
+                        });
+                    });
+                })
+
+            })
+
+            // REGISTER SERVICE WORKER
+            if ("serviceWorker" in navigator) {
+                window.addEventListener("load", function() {
+                navigator.serviceWorker
+                    .register("/service-worker.js")
+                    .then(function() {
+                        console.log("Pendaftaran ServiceWorker berhasil");
+                    })
+                    .catch(function() {
+                        console.log("Pendaftaran ServiceWorker gagal");
+                    });
+                });
+            } else {
+                console.log("ServiceWorker belum didukung browser ini.");
+            }
+
+            let deferredPrompt, 
+            installButton = document.querySelector("#install-button");
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                // Prevent Chrome 67 and earlier from automatically showing the prompt
+                e.preventDefault();
+                // Stash the event so it can be triggered later.
+                deferredPrompt = e;
+                installButton.style.display = 'block';
+                installButton.addEventListener('click', (e) => {
+                // hide our user interface that shows our A2HS button
+                installButton.style.display = 'none';
+                // Show the prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                deferredPrompt.userChoice
+                    .then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the A2HS prompt');
+                    } else {
+                        console.log('User dismissed the A2HS prompt');
+                    }
+                    deferredPrompt = null;
+                    });
+                });
+            });
+
+            window.addEventListener('appinstalled', (evt) => {
+                app.logEvent('a2hs', 'installed');
+            });
+
+        </script>
+    </body>
+</html>
